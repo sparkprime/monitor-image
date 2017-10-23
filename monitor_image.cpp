@@ -16,8 +16,34 @@ extern "C" {
     #include <FreeImage.h>
 }
 
+int redraw(Display * const display, const Pixmap pixmap, const Window window, const GC gc,
+           int img_width, int img_height)
+{
+    XWindowAttributes attrs;
+    if (!XGetWindowAttributes(display, window, &attrs)) {
+        return EXIT_FAILURE;
+    }
+
+    Colormap colormap = DefaultColormap(display, DefaultScreen(display));
+
+    XColor black;
+    if (!XAllocNamedColor(display, colormap, "black", &black, &black)) {
+        std::cerr << "XAllocNamedColor - failed to allocated 'black' color" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+
+    XSetForeground(display, gc, black.pixel);
+    XFillRectangle(display, window, gc, 0, 0, attrs.width, attrs.height);
+
+    XCopyArea(display, pixmap, window, gc, 0, 0, img_width, img_height, 0, 0);
+
+    return EXIT_SUCCESS;
+}
+
 int load_image (Display * const display, const Window window, const GC gc, Pixmap &pixmap,
-                int &width, int &height, const std::string &filename) {
+                int &width, int &height, const std::string &filename)
+{
     FREE_IMAGE_FORMAT fif = FreeImage_GetFileType(filename.c_str(), 0);
     if (fif == FIF_UNKNOWN) {
         fif = FreeImage_GetFIFFromFilename(filename.c_str());
@@ -106,7 +132,8 @@ int load_image (Display * const display, const Window window, const GC gc, Pixma
     return EXIT_SUCCESS;
 }
 
-int main(int argc, const char **argv) {
+int main(int argc, const char **argv)
+{
 
     if (argc != 2) {
         std::cerr << "Usage: " << argv[0] << " <filename>" << std::endl;
@@ -184,7 +211,7 @@ int main(int argc, const char **argv) {
                 return status;
             }
 
-            XCopyArea(display, pixmap, window, gc, 0,0, width, height, 0, 0);
+            redraw(display, pixmap, window, gc, width, height);
         }
 
         // Catch up on display.
@@ -194,7 +221,7 @@ int main(int argc, const char **argv) {
             XNextEvent(display, &e);
 
             if (e.type == Expose) {
-                XCopyArea(display, pixmap, window, gc, 0,0, width, height, 0, 0);
+                redraw(display, pixmap, window, gc, width, height);
             }
 
             if (e.type == ClientMessage) {
